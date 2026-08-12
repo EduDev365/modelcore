@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelcore"
-version = "1.0.0"
+version = "1.1.0"
 description = "Provider-agnostic infrastructure for AI model integrations."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -20,10 +20,11 @@ classifiers = [
 dependencies = ["pydantic>=2.9"]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+test = ["pytest>=8.0", "pytest-asyncio>=0.23", "opentelemetry-sdk>=1.39,<2"]
 dev = ["mypy>=1.13", "ruff>=0.8", "build>=1.2"]
 openai = ["openai>=1.0"]
 ollama = ["ollama>=0.6"]
+otel = ["opentelemetry-api>=1.39,<2"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

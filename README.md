@@ -56,10 +56,32 @@ observed = TelemetryProvider(fallback, LoggingTelemetrySink(logger))
 
 Tool handlers are explicit allowlisted `ToolDefinition`s; ModelCore never executes arbitrary model-produced code.
 
+## OpenTelemetry
+
+Install the optional adapter:
+
+```bash
+pip install "modelcore[otel]"
+```
+
+Your application remains responsible for configuring its own OpenTelemetry tracer provider and exporter. ModelCore neither configures global telemetry nor requires a collector:
+
+```python
+from opentelemetry import trace
+from modelcore.application import TelemetryProvider
+from modelcore.telemetry.opentelemetry import OpenTelemetrySink
+
+tracer = trace.get_tracer("my_application.modelcore")
+observed = TelemetryProvider(provider, OpenTelemetrySink(tracer))
+response = await observed.generate(request)
+```
+
+The adapter emits one `modelcore.generate` span for a completed normal generation. It includes safe operational metadata (provider, model, duration, success, token usage, and safe error type); it never includes prompts, messages, generated content, tool payloads, credentials, or raw exception text.
+
 ## Development
 
 ```bash
-pip install -e ".[dev,test,openai,ollama]"
+pip install -e ".[dev,test,openai,ollama,otel]"
 python -m pytest
 ruff check .
 ruff format --check .
@@ -73,4 +95,4 @@ Real integration tests are opt-in: set `MODELCORE_RUN_INTEGRATION=1` and provide
 
 Do not log prompts, generated content, secrets, or raw tool arguments. Tool calls are schema-validated and registry-limited.
 
-Future work: Redis/distributed cache, cache identity for routing/fallback, intermediate telemetry, OpenTelemetry, more providers, streaming recovery, and richer tool workflows.
+Future work: Redis/distributed cache, cache identity for routing/fallback, intermediate telemetry, more providers, streaming recovery, and richer tool workflows.

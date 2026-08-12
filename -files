@@ -1,0 +1,103 @@
+warning: in the working copy of '.github/workflows/ci.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'CHANGELOG.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pyproject.toml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml[m
+[1mindex f393436..d1c7e40 100644[m
+[1m--- a/.github/workflows/ci.yml[m
+[1m+++ b/.github/workflows/ci.yml[m
+[36m@@ -7,7 +7,7 @@[m [mjobs:[m
+       - uses: actions/checkout@v4[m
+       - uses: actions/setup-python@v5[m
+         with: {python-version: '3.11'}[m
+[31m-      - run: python -m pip install -e '.[dev,test,openai,ollama]'[m
+[32m+[m[32m      - run: python -m pip install -e '.[dev,test,openai,ollama,otel]'[m
+       - run: ruff check .[m
+       - run: ruff format --check .[m
+       - run: mypy src/modelcore[m
+[1mdiff --git a/CHANGELOG.md b/CHANGELOG.md[m
+[1mindex 61acdf6..27906fd 100644[m
+[1m--- a/CHANGELOG.md[m
+[1m+++ b/CHANGELOG.md[m
+[36m@@ -1,5 +1,11 @@[m
+ # Changelog[m
+ [m
+[32m+[m[32m## 1.1.0[m
+[32m+[m
+[32m+[m[32m- Added optional `OpenTelemetrySink` support through the `otel` extra.[m
+[32m+[m[32m- Generation telemetry can emit safe operational spans without prompts, generated content, or secrets.[m
+[32m+[m[32m- No known breaking changes.[m
+[32m+[m
+ ## 1.0.0[m
+ [m
+ - Provider-agnostic chat, streaming, embeddings, structured output, resilience, memory cache, fallback, telemetry, routing, and safe tool calling.[m
+[1mdiff --git a/README.md b/README.md[m
+[1mindex b088d62..8a19cf2 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -56,10 +56,32 @@[m [mobserved = TelemetryProvider(fallback, LoggingTelemetrySink(logger))[m
+ [m
+ Tool handlers are explicit allowlisted `ToolDefinition`s; ModelCore never executes arbitrary model-produced code.[m
+ [m
+[32m+[m[32m## OpenTelemetry[m
+[32m+[m
+[32m+[m[32mInstall the optional adapter:[m
+[32m+[m
+[32m+[m[32m```bash[m
+[32m+[m[32mpip install "modelcore[otel]"[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mYour application remains responsible for configuring its own OpenTelemetry tracer provider and exporter. ModelCore neither configures global telemetry nor requires a collector:[m
+[32m+[m
+[32m+[m[32m```python[m
+[32m+[m[32mfrom opentelemetry import trace[m
+[32m+[m[32mfrom modelcore.application import TelemetryProvider[m
+[32m+[m[32mfrom modelcore.telemetry.opentelemetry import OpenTelemetrySink[m
+[32m+[m
+[32m+[m[32mtracer = trace.get_tracer("my_application.modelcore")[m
+[32m+[m[32mobserved = TelemetryProvider(provider, OpenTelemetrySink(tracer))[m
+[32m+[m[32mresponse = await observed.generate(request)[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mThe adapter emits one `modelcore.generate` span for a completed normal generation. It includes safe operational metadata (provider, model, duration, success, token usage, and safe error type); it never includes prompts, messages, generated content, tool payloads, credentials, or raw exception text.[m
+[32m+[m
+ ## Development[m
+ [m
+ ```bash[m
+[31m-pip install -e ".[dev,test,openai,ollama]"[m
+[32m+[m[32mpip install -e ".[dev,test,openai,ollama,otel]"[m
+ python -m pytest[m
+ ruff check .[m
+ ruff format --check .[m
+[36m@@ -73,4 +95,4 @@[m [mReal integration tests are opt-in: set `MODELCORE_RUN_INTEGRATION=1` and provide[m
+ [m
+ Do not log prompts, generated content, secrets, or raw tool arguments. Tool calls are schema-validated and registry-limited.[m
+ [m
+[31m-Future work: Redis/distributed cache, cache identity for routing/fallback, intermediate telemetry, OpenTelemetry, more providers, streaming recovery, and richer tool workflows.[m
+[32m+[m[32mFuture work: Redis/distributed cache, cache identity for routing/fallback, intermediate telemetry, more providers, streaming recovery, and richer tool workflows.[m
+[1mdiff --git a/pyproject.toml b/pyproject.toml[m
+[1mindex 7a9af16..ad10032 100644[m
+[1m--- a/pyproject.toml[m
+[1m+++ b/pyproject.toml[m
+[36m@@ -4,7 +4,7 @@[m [mbuild-backend = "setuptools.build_meta"[m
+ [m
+ [project][m
+ name = "modelcore"[m
+[31m-version = "1.0.0"[m
+[32m+[m[32mversion = "1.1.0"[m
+ description = "Provider-agnostic infrastructure for AI model integrations."[m
+ requires-python = ">=3.11"[m
+ readme = "README.md"[m
+[36m@@ -20,10 +20,11 @@[m [mclassifiers = [[m
+ dependencies = ["pydantic>=2.9"][m
+ [m
+ [project.optional-dependencies][m
+[31m-test = ["pytest>=8.0", "pytest-asyncio>=0.23"][m
+[32m+[m[32mtest = ["pytest>=8.0", "pytest-asyncio>=0.23", "opentelemetry-sdk>=1.39,<2"][m
+ dev = ["mypy>=1.13", "ruff>=0.8", "build>=1.2"][m
+ openai = ["openai>=1.0"][m
+ ollama = ["ollama>=0.6"][m
+[32m+[m[32motel = ["opentelemetry-api>=1.39,<2"][m
+ [m
+ [tool.setuptools.packages.find][m
+ where = ["src"][m
