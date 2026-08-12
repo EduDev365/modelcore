@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelcore"
-version = "1.1.0"
+version = "1.1.1"
 description = "Provider-agnostic infrastructure for AI model integrations."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -31,6 +31,9 @@ where = ["src"]
 
 [tool.setuptools.package-dir]
 "" = "src"
+
+[tool.setuptools.package-data]
+modelcore = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
