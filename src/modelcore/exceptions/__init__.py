@@ -1,5 +1,6 @@
 """Exceptions raised by ModelCore."""
 
+from modelcore.exceptions.cache import CacheBackendError, CacheUnavailableError
 from modelcore.exceptions.provider import (
     AuthenticationError,
     GenerationTimeoutError,
@@ -19,6 +20,8 @@ from modelcore.exceptions.tool import (
 
 __all__ = [
     "AuthenticationError",
+    "CacheBackendError",
+    "CacheUnavailableError",
     "GenerationTimeoutError",
     "ModelCoreError",
     "ProviderError",

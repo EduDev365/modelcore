@@ -56,6 +56,38 @@ observed = TelemetryProvider(fallback, LoggingTelemetrySink(logger))
 
 Tool handlers are explicit allowlisted `ToolDefinition`s; ModelCore never executes arbitrary model-produced code.
 
+## Redis cache
+
+Install the optional async Redis adapter:
+
+```bash
+pip install "modelcore[redis]"
+```
+
+The application owns and injects the `redis.asyncio` client. ModelCore serializes only the normalized `ChatResponse`
+as versioned JSON and uses Redis native expiry for positive TTLs:
+
+```python
+import redis.asyncio as redis
+
+from modelcore.application import CachingProvider, ResilientProvider, RetryPolicy
+from modelcore.cache import RedisCache
+
+client = redis.Redis.from_url("redis://localhost:6379/0")
+reliable = ResilientProvider(provider, RetryPolicy())
+cached = CachingProvider(
+    reliable,
+    RedisCache(client, namespace="myapp:modelcore:"),
+    provider_key="openai:gpt-5",
+    ttl=60,
+)
+```
+
+Redis is useful when responses must be shared between processes and deployments. Cached responses contain generated
+content, so configure Redis access, retention, and encryption according to your privacy requirements. Redis failures
+are exposed as `CacheBackendError` or `CacheUnavailableError`; the adapter does not silently apply a best-effort
+policy. Stampede protection remains process-local—there is no distributed lock.
+
 ## OpenTelemetry
 
 Install the optional adapter:
@@ -81,7 +113,7 @@ The adapter emits one `modelcore.generate` span for a completed normal generatio
 ## Development
 
 ```bash
-pip install -e ".[dev,test,openai,ollama,otel]"
+pip install -e ".[dev,test,openai,ollama,otel,redis]"
 python -m pytest
 ruff check .
 ruff format --check .
@@ -89,10 +121,13 @@ mypy src/modelcore
 python -m build
 ```
 
-Real integration tests are opt-in: set `MODELCORE_RUN_INTEGRATION=1` and provider credentials/runtime. They are skipped by default.
+Real provider integration tests are opt-in: set `MODELCORE_RUN_INTEGRATION=1` and provider credentials/runtime. The
+Redis integration test separately requires `MODELCORE_RUN_REDIS_INTEGRATION=1` and optionally `MODELCORE_REDIS_URL`.
+They are skipped by default.
 
 ## Security and future work
 
 Do not log prompts, generated content, secrets, or raw tool arguments. Tool calls are schema-validated and registry-limited.
 
-Future work: Redis/distributed cache, cache identity for routing/fallback, intermediate telemetry, more providers, streaming recovery, and richer tool workflows.
+Future work: distributed cache locking, cache identity for routing/fallback, intermediate telemetry, more providers,
+streaming recovery, and richer tool workflows.

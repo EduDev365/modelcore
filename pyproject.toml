@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modelcore"
-version = "1.1.1"
+version = "1.2.0"
 description = "Provider-agnostic infrastructure for AI model integrations."
 requires-python = ">=3.11"
 readme = "README.md"
@@ -25,6 +25,7 @@ dev = ["mypy>=1.13", "ruff>=0.8", "build>=1.2"]
 openai = ["openai>=1.0"]
 ollama = ["ollama>=0.6"]
 otel = ["opentelemetry-api>=1.39,<2"]
+redis = ["redis>=5.0,<9"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -38,7 +39,7 @@ modelcore = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
-markers = ["integration: opt-in tests that contact configured external providers"]
+markers = ["integration: opt-in tests that contact configured external services"]
 
 [tool.ruff]
 target-version = "py311"
