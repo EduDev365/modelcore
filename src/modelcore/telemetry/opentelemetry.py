@@ -6,6 +6,9 @@ configuration; this module never modifies global OpenTelemetry state.
 
 from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 
+from modelcore.models.cache_telemetry import CacheTelemetryEvent
+from modelcore.models.fallback_telemetry import FallbackTelemetryEvent
+from modelcore.models.retry_telemetry import RetryTelemetryEvent
 from modelcore.models.telemetry import GenerationTelemetryEvent
 
 
@@ -21,6 +24,72 @@ class OpenTelemetrySink:
             for name, value in _attributes(event).items():
                 span.set_attribute(name, value)
             if not event.success:
+                span.set_status(Status(StatusCode.ERROR))
+        finally:
+            span.end()
+
+
+class OpenTelemetryCacheSink:
+    """Convert safe cache operation events into OpenTelemetry spans."""
+
+    def __init__(self, tracer: Tracer) -> None:
+        self._tracer = tracer
+
+    async def emit(self, event: CacheTelemetryEvent) -> None:
+        span = self._tracer.start_span(f"modelcore.cache.{event.operation}", kind=SpanKind.INTERNAL)
+        try:
+            span.set_attribute("modelcore.cache.operation", event.operation)
+            span.set_attribute("modelcore.cache.outcome", event.outcome)
+            span.set_attribute("modelcore.cache.backend", event.backend)
+            span.set_attribute("modelcore.cache.duration_ms", event.duration_ms)
+            if event.error_type is not None:
+                span.set_attribute("modelcore.cache.error_type", event.error_type)
+                span.set_status(Status(StatusCode.ERROR))
+        finally:
+            span.end()
+
+
+class OpenTelemetryRetrySink:
+    """Convert safe retry attempt events into internal OpenTelemetry spans."""
+
+    def __init__(self, tracer: Tracer) -> None:
+        self._tracer = tracer
+
+    async def emit(self, event: RetryTelemetryEvent) -> None:
+        span = self._tracer.start_span("modelcore.retry", kind=SpanKind.INTERNAL)
+        try:
+            span.set_attribute("modelcore.retry.provider", event.provider)
+            span.set_attribute("modelcore.retry.model", event.model)
+            span.set_attribute("modelcore.retry.attempt", event.attempt)
+            span.set_attribute("modelcore.retry.max_attempts", event.max_attempts)
+            span.set_attribute("modelcore.retry.outcome", event.outcome)
+            span.set_attribute("modelcore.retry.duration_ms", event.duration_ms)
+            if event.delay_ms is not None:
+                span.set_attribute("modelcore.retry.delay_ms", event.delay_ms)
+            if event.error_type is not None:
+                span.set_attribute("modelcore.retry.error_type", event.error_type)
+                span.set_status(Status(StatusCode.ERROR))
+        finally:
+            span.end()
+
+
+class OpenTelemetryFallbackSink:
+    """Convert safe fallback candidate events into internal OpenTelemetry spans."""
+
+    def __init__(self, tracer: Tracer) -> None:
+        self._tracer = tracer
+
+    async def emit(self, event: FallbackTelemetryEvent) -> None:
+        span = self._tracer.start_span("modelcore.fallback", kind=SpanKind.INTERNAL)
+        try:
+            span.set_attribute("modelcore.fallback.provider", event.provider)
+            span.set_attribute("modelcore.fallback.model", event.model)
+            span.set_attribute("modelcore.fallback.candidate_index", event.candidate_index)
+            span.set_attribute("modelcore.fallback.candidate_count", event.candidate_count)
+            span.set_attribute("modelcore.fallback.outcome", event.outcome)
+            span.set_attribute("modelcore.fallback.duration_ms", event.duration_ms)
+            if event.error_type is not None:
+                span.set_attribute("modelcore.fallback.error_type", event.error_type)
                 span.set_status(Status(StatusCode.ERROR))
         finally:
             span.end()

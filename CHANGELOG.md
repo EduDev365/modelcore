@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0
+## 1.3.0
 
 - Added optional `OpenTelemetrySink` support through the `otel` extra.
 - Generation telemetry can emit safe operational spans without prompts, generated content, or secrets.

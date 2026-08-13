@@ -88,6 +88,59 @@ content, so configure Redis access, retention, and encryption according to your 
 are exposed as `CacheBackendError` or `CacheUnavailableError`; the adapter does not silently apply a best-effort
 policy. Stampede protection remains process-local—there is no distributed lock.
 
+## Cache telemetry
+
+Observe any cache backend by composition, without changing `CachingProvider` or the backend's error policy:
+
+```python
+from modelcore.application import CachingProvider, MemoryCache, ObservableCacheBackend
+
+observed_cache = ObservableCacheBackend(
+    MemoryCache(),
+    backend_name="memory",
+    sink=cache_telemetry_sink,
+)
+cached = CachingProvider(provider, observed_cache, provider_key="openai:gpt-5", ttl=60)
+```
+
+Cache telemetry emits safe `get` hit/miss/error events and `set` success/error events with duration and explicit
+backend identity. It never includes cache keys, prompts, messages, generated content, cached values, Redis connection
+details, or credentials. Sink failures are best-effort, while backend failures remain fail-fast and propagate unchanged.
+
+With the optional `modelcore[otel]` adapter, use `OpenTelemetryCacheSink` to create
+`modelcore.cache.get` and `modelcore.cache.set` spans. Applications continue to own tracer configuration.
+
+## Retry & fallback telemetry
+
+Retry telemetry observes attempts within the same logical provider; fallback telemetry observes movement between
+explicitly named candidates. Both are optional and best-effort, and neither changes retry eligibility, backoff,
+fallback order, or propagated exceptions:
+
+```python
+primary = ResilientProvider(
+    openai_provider,
+    RetryPolicy(),
+    provider_name="openai",
+    telemetry_sink=retry_sink,
+)
+secondary = ResilientProvider(
+    ollama_provider,
+    RetryPolicy(),
+    provider_name="ollama",
+    telemetry_sink=retry_sink,
+)
+provider = FallbackProvider(
+    [primary, secondary],
+    provider_names=["openai", "ollama"],
+    telemetry_sink=fallback_sink,
+)
+```
+
+Configured names are operational identities supplied by the application; ModelCore never derives them from provider
+classes or responses. Events contain only model and attempt/candidate metadata, durations, delays, outcomes, and safe
+error type namesâ€”never prompts, messages, generated content, endpoints, credentials, or raw exception text. The
+optional OpenTelemetry adapters create `modelcore.retry` and `modelcore.fallback` internal spans.
+
 ## OpenTelemetry
 
 Install the optional adapter:
@@ -101,14 +154,24 @@ Your application remains responsible for configuring its own OpenTelemetry trace
 ```python
 from opentelemetry import trace
 from modelcore.application import TelemetryProvider
-from modelcore.telemetry.opentelemetry import OpenTelemetrySink
+from modelcore.telemetry.opentelemetry import (
+    OpenTelemetryCacheSink,
+    OpenTelemetryFallbackSink,
+    OpenTelemetryRetrySink,
+    OpenTelemetrySink,
+)
 
 tracer = trace.get_tracer("my_application.modelcore")
 observed = TelemetryProvider(provider, OpenTelemetrySink(tracer))
+cache_sink = OpenTelemetryCacheSink(tracer)
+retry_sink = OpenTelemetryRetrySink(tracer)
+fallback_sink = OpenTelemetryFallbackSink(tracer)
 response = await observed.generate(request)
 ```
 
-The adapter emits one `modelcore.generate` span for a completed normal generation. It includes safe operational metadata (provider, model, duration, success, token usage, and safe error type); it never includes prompts, messages, generated content, tool payloads, credentials, or raw exception text.
+The adapters emit generation, cache-operation, retry-attempt, and fallback-candidate spans containing only safe
+operational metadata; they never include prompts, messages, generated content, cache keys or values, tool payloads,
+credentials, endpoints, or raw exception text.
 
 ## Development
 

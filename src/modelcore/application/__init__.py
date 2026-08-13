@@ -1,8 +1,9 @@
 """Application-level orchestration for ModelCore."""
 
 from modelcore.application.cache import CachingProvider, MemoryCache, build_cache_key
-from modelcore.application.fallback import FallbackProvider
-from modelcore.application.resilience import ResilientProvider, RetryPolicy
+from modelcore.application.cache_telemetry import NoOpCacheTelemetrySink, ObservableCacheBackend
+from modelcore.application.fallback import FallbackProvider, NoOpFallbackTelemetrySink
+from modelcore.application.resilience import NoOpRetryTelemetrySink, ResilientProvider, RetryPolicy
 from modelcore.application.routing import (
     BalancedPolicy,
     CheapPolicy,
@@ -30,6 +31,10 @@ __all__ = [
     "ModelCandidate",
     "LoggingTelemetrySink",
     "NoOpTelemetrySink",
+    "NoOpCacheTelemetrySink",
+    "NoOpFallbackTelemetrySink",
+    "NoOpRetryTelemetrySink",
+    "ObservableCacheBackend",
     "ResilientProvider",
     "RetryPolicy",
     "QualityPolicy",
