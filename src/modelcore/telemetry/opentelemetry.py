@@ -9,6 +9,7 @@ from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 from modelcore.models.cache_telemetry import CacheTelemetryEvent
 from modelcore.models.fallback_telemetry import FallbackTelemetryEvent
 from modelcore.models.retry_telemetry import RetryTelemetryEvent
+from modelcore.models.routing_telemetry import RoutingTelemetryEvent
 from modelcore.models.telemetry import GenerationTelemetryEvent
 
 
@@ -91,6 +92,32 @@ class OpenTelemetryFallbackSink:
             if event.error_type is not None:
                 span.set_attribute("modelcore.fallback.error_type", event.error_type)
                 span.set_status(Status(StatusCode.ERROR))
+        finally:
+            span.end()
+
+
+class OpenTelemetryRoutingSink:
+    """Convert initial routing decisions into internal OpenTelemetry spans."""
+
+    def __init__(self, tracer: Tracer) -> None:
+        self._tracer = tracer
+
+    async def emit(self, event: RoutingTelemetryEvent) -> None:
+        span = self._tracer.start_span("modelcore.routing", kind=SpanKind.INTERNAL)
+        try:
+            attributes: dict[str, str | float | int] = {
+                "modelcore.routing.policy": event.policy,
+                "modelcore.routing.candidate": event.candidate,
+                "modelcore.routing.model": event.model,
+                "modelcore.routing.candidate_index": event.candidate_index,
+                "modelcore.routing.candidate_count": event.candidate_count,
+                "modelcore.routing.duration_ms": event.duration_ms,
+                "modelcore.routing.cost_score": event.cost_score,
+                "modelcore.routing.latency_score": event.latency_score,
+                "modelcore.routing.quality_score": event.quality_score,
+            }
+            for name, value in attributes.items():
+                span.set_attribute(name, value)
         finally:
             span.end()
 

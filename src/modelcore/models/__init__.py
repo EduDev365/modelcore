@@ -10,6 +10,7 @@ from modelcore.models.embedding_usage import EmbeddingUsage
 from modelcore.models.fallback_telemetry import FallbackTelemetryEvent
 from modelcore.models.message import Message
 from modelcore.models.retry_telemetry import RetryTelemetryEvent
+from modelcore.models.routing_telemetry import RoutingTelemetryEvent
 from modelcore.models.telemetry import GenerationTelemetryEvent
 from modelcore.models.tools import ToolCall, ToolCallingResponse, ToolDefinition, ToolResult
 from modelcore.models.usage import Usage
@@ -25,6 +26,7 @@ __all__ = [
     "FallbackTelemetryEvent",
     "Message",
     "RetryTelemetryEvent",
+    "RoutingTelemetryEvent",
     "GenerationTelemetryEvent",
     "ToolCall",
     "ToolCallingResponse",

@@ -2,6 +2,12 @@
 
 from modelcore.application.cache import CachingProvider, MemoryCache, build_cache_key
 from modelcore.application.cache_telemetry import NoOpCacheTelemetrySink, ObservableCacheBackend
+from modelcore.application.circuit_breaker import (
+    CircuitBreakerPolicy,
+    CircuitBreakerProvider,
+    CircuitOpenError,
+    CircuitState,
+)
 from modelcore.application.fallback import FallbackProvider, NoOpFallbackTelemetrySink
 from modelcore.application.resilience import NoOpRetryTelemetrySink, ResilientProvider, RetryPolicy
 from modelcore.application.routing import (
@@ -9,6 +15,7 @@ from modelcore.application.routing import (
     CheapPolicy,
     FastPolicy,
     ModelCandidate,
+    NoOpRoutingTelemetrySink,
     QualityPolicy,
     RoutingPolicy,
     RoutingProvider,
@@ -23,12 +30,17 @@ from modelcore.application.tools import ToolExecutor, ToolGeneration, ToolRegist
 
 __all__ = [
     "CachingProvider",
+    "CircuitBreakerPolicy",
+    "CircuitBreakerProvider",
+    "CircuitOpenError",
+    "CircuitState",
     "BalancedPolicy",
     "CheapPolicy",
     "FallbackProvider",
     "FastPolicy",
     "MemoryCache",
     "ModelCandidate",
+    "NoOpRoutingTelemetrySink",
     "LoggingTelemetrySink",
     "NoOpTelemetrySink",
     "NoOpCacheTelemetrySink",

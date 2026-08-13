@@ -22,5 +22,12 @@ class GenerationTimeoutError(ProviderError):
     """A generation attempt exceeded its configured timeout."""
 
 
+class CircuitOpenError(ProviderError):
+    """A circuit breaker rejected a call without executing the provider."""
+
+    def __init__(self) -> None:
+        super().__init__("Circuit breaker is open; provider call was not executed")
+
+
 class StructuredOutputError(ModelCoreError):
     """Structured output could not be parsed or validated against its schema."""

@@ -7,9 +7,11 @@ from modelcore.application.routing import (
     CheapPolicy,
     FastPolicy,
     ModelCandidate,
+    NoOpRoutingTelemetrySink,
     QualityPolicy,
     RoutingProvider,
 )
+from modelcore.models import RoutingTelemetryEvent
 from modelcore.models.chat_request import ChatRequest
 from modelcore.models.chat_response import ChatResponse
 from modelcore.models.message import Message
@@ -56,6 +58,19 @@ def make_request() -> ChatRequest:
     return ChatRequest(messages=[Message.user("Hello")], model="requested-model", temperature=0.2)
 
 
+class CollectingRoutingSink:
+    def __init__(self) -> None:
+        self.events: list[RoutingTelemetryEvent] = []
+
+    async def emit(self, event: RoutingTelemetryEvent) -> None:
+        self.events.append(event)
+
+
+class FailingRoutingSink:
+    async def emit(self, event: RoutingTelemetryEvent) -> None:
+        raise RuntimeError("sink failure")
+
+
 def test_policies_select_candidates_using_configured_scores() -> None:
     expensive_fast_quality = make_candidate("a", cost=3, latency=1, quality=5)
     cheap_slow = make_candidate("b", cost=1, latency=4, quality=2)
@@ -64,6 +79,20 @@ def test_policies_select_candidates_using_configured_scores() -> None:
     assert CheapPolicy().select(make_request(), candidates) is cheap_slow
     assert FastPolicy().select(make_request(), candidates) is expensive_fast_quality
     assert QualityPolicy().select(make_request(), candidates) is expensive_fast_quality
+
+
+def test_builtin_policies_expose_stable_operational_identities() -> None:
+    assert [
+        CheapPolicy().policy_name,
+        FastPolicy().policy_name,
+        QualityPolicy().policy_name,
+        BalancedPolicy().policy_name,
+    ] == [
+        "cheap",
+        "fast",
+        "quality",
+        "balanced",
+    ]
 
 
 def test_balanced_policy_uses_quality_minus_cost_minus_latency() -> None:
@@ -114,6 +143,55 @@ async def test_router_sends_immutable_request_copy_with_selected_model_and_prese
         ChatRequest(messages=original_request.messages, model="selected-model", temperature=0.2)
     ]
     assert original_request.model == "requested-model"
+
+
+@pytest.mark.asyncio
+async def test_router_emits_selected_candidate_scores_and_duration() -> None:
+    sink = CollectingRoutingSink()
+    candidate = make_candidate("selected", model="gpt-test", cost=2, latency=3, quality=4)
+    clock_values = iter([10.0, 10.125])
+    router = RoutingProvider(
+        CheapPolicy(),
+        [make_candidate("other", cost=3), candidate],
+        telemetry_sink=sink,
+        clock=lambda: next(clock_values),
+    )
+
+    await router.generate(make_request())
+
+    assert sink.events == [RoutingTelemetryEvent("cheap", "selected", "gpt-test", 2, 2, 125.0, 2.0, 3.0, 4.0)]
+
+
+@pytest.mark.asyncio
+async def test_router_sink_failure_does_not_change_generation() -> None:
+    provider = FakeProvider()
+    candidate = make_candidate("selected", provider=provider)
+    router = RoutingProvider(CheapPolicy(), [candidate], telemetry_sink=FailingRoutingSink())
+
+    result = await router.generate(make_request())
+
+    assert result is provider.response
+    assert provider.requests[0].model == candidate.model
+
+
+def test_external_policy_requires_explicit_name_only_with_telemetry() -> None:
+    class ExternalPolicy:
+        def select(self, request: ChatRequest, candidates: list[ModelCandidate]) -> ModelCandidate:
+            return candidates[0]
+
+    candidate = make_candidate("candidate")
+    with pytest.raises(ValueError, match="policy_name is required"):
+        RoutingProvider(ExternalPolicy(), [candidate], telemetry_sink=NoOpRoutingTelemetrySink())
+
+    router = RoutingProvider(
+        ExternalPolicy(), [candidate], policy_name=" external-policy ", telemetry_sink=CollectingRoutingSink()
+    )
+    assert router is not None
+
+
+def test_policy_name_rejects_blank_values() -> None:
+    with pytest.raises(ValueError, match="policy_name cannot be blank"):
+        RoutingProvider(CheapPolicy(), [make_candidate("candidate")], policy_name=" ")
 
 
 @pytest.mark.asyncio

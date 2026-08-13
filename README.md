@@ -141,6 +141,49 @@ classes or responses. Events contain only model and attempt/candidate metadata, 
 error type namesâ€”never prompts, messages, generated content, endpoints, credentials, or raw exception text. The
 optional OpenTelemetry adapters create `modelcore.retry` and `modelcore.fallback` internal spans.
 
+## Routing telemetry
+
+Routing telemetry observes the initial candidate selected by `RoutingProvider`; it is separate from fallback, retry,
+and final generation telemetry. Only the selected `ModelCandidate.key`, configured model, policy identity, candidate
+position/count, configured scores, and routing duration are emitted. Prompts, messages, responses, provider
+representations, endpoints, and credentials are never included.
+
+Built-in policies expose stable identities (`cheap`, `fast`, `quality`, and `balanced`). External policies must provide
+an explicit keyword-only `policy_name` when routing telemetry is enabled. Sink failures are best-effort and cannot
+change selection or provider execution. OpenTelemetry is optional; `OpenTelemetryRoutingSink` emits one
+`modelcore.routing` `INTERNAL` span per successful decision.
+
+```python
+from modelcore.application import CheapPolicy, ModelCandidate, RoutingProvider
+from modelcore.telemetry.opentelemetry import OpenTelemetryRoutingSink
+
+router = RoutingProvider(
+    CheapPolicy(),
+    [ModelCandidate("openai-cheap", provider, "gpt-5", 1, 2, 3)],
+    telemetry_sink=OpenTelemetryRoutingSink(tracer),
+)
+```
+
+## Circuit Breaker
+
+`CircuitBreakerProvider` protects only `generate()` and follows `CLOSED → OPEN → HALF_OPEN`. After the configured
+number of transient failures, calls fail fast until the monotonic recovery timeout allows one recovery probe. Retry
+recovers an individual call, the circuit breaker stops repeatedly calling a persistently unavailable provider, and
+fallback tries another explicitly configured provider.
+
+```python
+from modelcore.application import CircuitBreakerPolicy, CircuitBreakerProvider, ResilientProvider
+
+provider = CircuitBreakerProvider(
+    ResilientProvider(openai),
+    policy=CircuitBreakerPolicy(failure_threshold=5, recovery_timeout=30.0),
+)
+```
+
+Retry and fallback composition remain consumer choices. Wrapping `ResilientProvider` inside the circuit breaker makes
+the breaker observe the final result after retries. `CircuitOpenError` is not made fallback-eligible automatically,
+and streaming is delegated unchanged.
+
 ## OpenTelemetry
 
 Install the optional adapter:
@@ -158,6 +201,7 @@ from modelcore.telemetry.opentelemetry import (
     OpenTelemetryCacheSink,
     OpenTelemetryFallbackSink,
     OpenTelemetryRetrySink,
+    OpenTelemetryRoutingSink,
     OpenTelemetrySink,
 )
 
@@ -166,6 +210,7 @@ observed = TelemetryProvider(provider, OpenTelemetrySink(tracer))
 cache_sink = OpenTelemetryCacheSink(tracer)
 retry_sink = OpenTelemetryRetrySink(tracer)
 fallback_sink = OpenTelemetryFallbackSink(tracer)
+routing_sink = OpenTelemetryRoutingSink(tracer)
 response = await observed.generate(request)
 ```
 

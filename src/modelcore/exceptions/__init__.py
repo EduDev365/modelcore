@@ -3,6 +3,7 @@
 from modelcore.exceptions.cache import CacheBackendError, CacheUnavailableError
 from modelcore.exceptions.provider import (
     AuthenticationError,
+    CircuitOpenError,
     GenerationTimeoutError,
     ModelCoreError,
     ProviderError,
@@ -22,6 +23,7 @@ __all__ = [
     "AuthenticationError",
     "CacheBackendError",
     "CacheUnavailableError",
+    "CircuitOpenError",
     "GenerationTimeoutError",
     "ModelCoreError",
     "ProviderError",
