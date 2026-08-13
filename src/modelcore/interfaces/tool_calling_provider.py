@@ -6,6 +6,8 @@ from modelcore.models.tools import ToolCallingResponse, ToolDefinition, ToolResu
 
 
 class ToolCallingProvider(Protocol):
+    """Generate explicit tool calls and continue from validated tool results."""
+
     async def generate_with_tools(
         self, request: ChatRequest, tools: Sequence[ToolDefinition]
     ) -> ToolCallingResponse: ...

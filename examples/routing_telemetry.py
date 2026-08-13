@@ -3,7 +3,7 @@
 import asyncio
 
 from modelcore.application import CheapPolicy, ModelCandidate, RoutingProvider
-from modelcore.models import ChatRequest, ChatResponse, Message
+from modelcore.models import ChatRequest, ChatResponse, Message, RoutingTelemetryEvent
 
 
 class FakeProvider:
@@ -12,7 +12,7 @@ class FakeProvider:
 
 
 class PrintingRoutingSink:
-    async def emit(self, event) -> None:
+    async def emit(self, event: RoutingTelemetryEvent) -> None:
         print(f"selected={event.candidate} model={event.model} policy={event.policy}")
 
 

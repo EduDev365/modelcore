@@ -5,6 +5,8 @@ from modelcore.models.chat_response import ChatResponse
 
 
 class StructuredOutputProvider(Protocol):
+    """Generate structured JSON content against an application schema."""
+
     async def generate_structured(
         self,
         request: ChatRequest,

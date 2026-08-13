@@ -7,6 +7,8 @@ from modelcore.models.chat_stream_chunk import ChatStreamChunk
 
 
 class LLMProvider(Protocol):
+    """Generate normalized chat responses and streams."""
+
     async def generate(self, request: ChatRequest) -> ChatResponse:
         """Generate a normalized response for a chat request."""
 

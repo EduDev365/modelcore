@@ -12,6 +12,8 @@ from modelcore.models.tools import ToolCall, ToolCallingResponse, ToolDefinition
 
 
 class ToolRegistry:
+    """Registry of explicitly allowlisted tool definitions keyed by name."""
+
     def __init__(self, tools: Sequence[ToolDefinition] = ()) -> None:
         self._tools: dict[str, ToolDefinition] = {}
         for tool in tools:
@@ -30,6 +32,8 @@ class ToolRegistry:
 
 
 class ToolExecutor:
+    """Validate one tool call and invoke its registered sync or async handler."""
+
     def __init__(self, registry: ToolRegistry) -> None:
         self._registry = registry
 
@@ -52,6 +56,8 @@ class ToolExecutor:
 
 
 class ToolGeneration:
+    """Run one bounded tool-calling round through a compatible provider."""
+
     def __init__(self, provider: ToolCallingProvider, executor: ToolExecutor) -> None:
         self._provider = provider
         self._executor = executor

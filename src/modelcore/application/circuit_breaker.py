@@ -65,7 +65,6 @@ class CircuitBreakerProvider:
         self._state = CircuitState.CLOSED
         self._consecutive_failures = 0
         self._opened_at: float | None = None
-        self._half_open_in_flight = False
         self._lock = asyncio.Lock()
 
     @property
@@ -111,7 +110,6 @@ class CircuitBreakerProvider:
             if self._clock() - self._opened_at < self._policy.recovery_timeout:
                 raise CircuitOpenError()
             self._state = CircuitState.HALF_OPEN
-            self._half_open_in_flight = True
             return True
 
     async def _handle_success(self, half_open_attempt: bool) -> None:
@@ -147,10 +145,8 @@ class CircuitBreakerProvider:
     def _open(self) -> None:
         self._state = CircuitState.OPEN
         self._opened_at = self._clock()
-        self._half_open_in_flight = False
 
     def _close(self) -> None:
         self._state = CircuitState.CLOSED
         self._consecutive_failures = 0
         self._opened_at = None
-        self._half_open_in_flight = False

@@ -1,5 +1,7 @@
 """Compose offline cache telemetry around MemoryCache."""
 
+import asyncio
+
 from modelcore.application import MemoryCache, ObservableCacheBackend
 from modelcore.models import CacheTelemetryEvent, ChatResponse
 
@@ -27,3 +29,7 @@ async def main() -> None:
     await cache.get("application-owned-key")  # miss
     await cache.set("application-owned-key", response, ttl=60)  # success
     await cache.get("application-owned-key")  # hit
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

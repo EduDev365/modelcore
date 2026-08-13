@@ -1,5 +1,6 @@
 """Observe retry and fallback composition without network access."""
 
+import asyncio
 from collections.abc import AsyncIterator
 
 from modelcore.application import FallbackProvider, ResilientProvider, RetryPolicy
@@ -30,7 +31,7 @@ class FailingProvider:
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[ChatStreamChunk]:
         if False:
-            yield ChatStreamChunk(content="", model=request.model, provider="primary")
+            yield ChatStreamChunk(content_delta="", model=request.model, provider="primary")
 
 
 class SuccessfulProvider:
@@ -46,13 +47,13 @@ async def main() -> None:
     providers = [
         ResilientProvider(
             FailingProvider(),
-            RetryPolicy(max_attempts=2, initial_delay=0),
+            RetryPolicy(max_attempts=2, base_delay=0),
             provider_name="primary",
             telemetry_sink=retry_sink,
         ),
         ResilientProvider(
             SuccessfulProvider(),
-            RetryPolicy(max_attempts=2, initial_delay=0),
+            RetryPolicy(max_attempts=2, base_delay=0),
             provider_name="secondary",
             telemetry_sink=retry_sink,
         ),
@@ -64,3 +65,7 @@ async def main() -> None:
     )
     response = await provider.generate(ChatRequest([Message.user("Hello")], model="example"))
     print(response)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

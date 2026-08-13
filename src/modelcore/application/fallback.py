@@ -2,6 +2,7 @@ import time
 from collections.abc import AsyncIterator, Callable, Sequence
 
 from modelcore.exceptions.provider import (
+    CircuitOpenError,
     GenerationTimeoutError,
     ModelCoreError,
     ProviderUnavailableError,
@@ -17,6 +18,7 @@ from modelcore.models.fallback_telemetry import FallbackTelemetryEvent
 FallbackClock = Callable[[], float]
 
 _FALLBACK_ELIGIBLE_ERRORS = (
+    CircuitOpenError,
     GenerationTimeoutError,
     ProviderUnavailableError,
     RateLimitError,
